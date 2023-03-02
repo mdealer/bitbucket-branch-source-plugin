@@ -229,7 +229,7 @@ public class BitbucketBuildStatusNotifications {
             String folderName = build.getParent().getParent().getFullName();
             key = String.format("%s/%s", folderName, branch);
         } else {
-            key = build.getParent().getFullName(); // use the job full name as the key for the status
+            key = build.getUrl();
         }
 
         return key;
