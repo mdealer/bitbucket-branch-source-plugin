@@ -121,6 +121,22 @@ public class BitbucketBuildStatusNotifications {
         final Result result = build.getResult();
         final String name = build.getFullDisplayName(); // use the build number as the display name of the status
         String buildDescription = build.getDescription();
+        if (buildDescription.startsWith("<")) { // Probably HTML and very long. BB rejects huge descriptions with HTTP 400.
+            listener.getLogger().println("Not sending the build description to BB, as it appears to be HTML.");
+            buildDescription = null;
+        } else {
+            int pos = 0;
+            int lines = 0;
+            while (pos > 0) {
+                buildDescription.indexOf('\n', pos);
+                ++pos;
+                ++lines;
+            }
+            if (lines > 2) {
+                listener.getLogger().println("Not sending the build description to BB, as it contains more than 2 lines of text.");
+                buildDescription = null; // BB does not offer a lot of space for descriptions.
+            }
+        }
         String statusDescription;
         BitbucketBuildStatus.Status state;
         if (Result.SUCCESS.equals(result)) {
