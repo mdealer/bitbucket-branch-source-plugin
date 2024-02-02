@@ -93,6 +93,10 @@ public class BitbucketBuildStatus {
         this.state = state;
         this.url = url;
         this.key = DigestUtils.md5Hex(key);
+        // Longer names cause HTTP 400
+        if (name != null && name.length() > 255) {
+            name = name.substring(0, 255);
+        }
         this.name = name;
     }
 
