@@ -93,13 +93,7 @@ import org.apache.http.client.AuthCache;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpHead;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.client.methods.*;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.config.SocketConfig;
 import org.apache.http.entity.ContentType;
@@ -892,6 +886,7 @@ public class BitbucketCloudApiClient implements BitbucketApi {
         httpMethod.setConfig(requestConfig.build());
 
         CloseableHttpResponse response = client.execute(host, httpMethod, requestContext);
+        int i = 5000;
         while (response.getStatusLine().getStatusCode() == API_RATE_LIMIT_CODE) {
             release(httpMethod);
             if (Thread.interrupted()) {
@@ -901,8 +896,11 @@ public class BitbucketCloudApiClient implements BitbucketApi {
                 TODO: When bitbucket starts supporting rate limit expiration time, remove 5 sec wait and put code
                       to wait till expiration time is over. It should also fix the wait for ever loop.
              */
-            LOGGER.fine("Bitbucket Cloud API rate limit reached, sleeping for 5 sec then retry...");
-            Thread.sleep(5000);
+            LOGGER.fine("Bitbucket Cloud API rate limit reached, sleeping for " + i + " ms before retrying...");
+            Thread.sleep(i);
+            if (i < 60000 * 5) {
+                i *= 2;
+            }
             response = client.execute(host, httpMethod, requestContext);
         }
         return response;
@@ -1008,7 +1006,11 @@ public class BitbucketCloudApiClient implements BitbucketApi {
             String content = getResponseContent(response);
             EntityUtils.consume(response.getEntity());
             if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK && response.getStatusLine().getStatusCode() != HttpStatus.SC_CREATED) {
-                throw new BitbucketRequestException(response.getStatusLine().getStatusCode(), "HTTP request error. Status: " + response.getStatusLine().getStatusCode() + ": " + response.getStatusLine().getReasonPhrase() + ".\n" + response);
+                String reqContent = "";
+                if (httppost instanceof HttpEntityEnclosingRequestBase) {
+                    reqContent = ((HttpEntityEnclosingRequestBase) httppost).getEntity().toString();
+                }
+                throw new BitbucketRequestException(response.getStatusLine().getStatusCode(), "HTTP request error. Status: " + response.getStatusLine().getStatusCode() + ": " + response.getStatusLine().getReasonPhrase() + ".\nRequest: " + reqContent + "\nResponse: " + content);
             }
             return content;
         } catch (BitbucketRequestException e) {
